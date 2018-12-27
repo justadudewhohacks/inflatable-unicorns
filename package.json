@@ -1,0 +1,16 @@
+{
+  "name": "inflatable-unicorns",
+  "version": "0.0.0",
+  "description": "Fancy things need fance names.",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "justadudewhohacks",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node": "^10.12.18",
+    "face-api.js": "file:../face-api.js",
+    "tslib": "^1.9.3"
+  }
+}
