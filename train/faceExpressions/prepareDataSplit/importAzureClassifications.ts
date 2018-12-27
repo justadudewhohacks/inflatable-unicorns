@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { DATA_PATH } from './.env';
+import { DATA_PATH } from '../.env';
 
 const CONTEMPT = 'contempt'
 
@@ -15,8 +15,8 @@ const EXPRESSION_NAME_MAP = {
   fear: 'fearful'
 }
 
-const baseDir = path.resolve(DATA_PATH, 'face-classification')
-const outName = 'db'
+const baseDir = path.resolve(DATA_PATH, 'imfdb')
+const outName = 'imfdb'
 
 const THRESH = 0.8
 
@@ -45,27 +45,26 @@ jsonFiles.forEach(jsonFile => {
 
   const classificationResult = expressions.find(({ prob }) => prob > THRESH)
 
-  const fileName = jsonFile.replace('.json', '.jpg')
+  const img = jsonFile.replace('.json', '.jpg')
 
   if (classificationResult) {
     const actualLabel = EXPRESSION_NAME_MAP[classificationResult.expression]
     classificationData[actualLabel] = classificationData[actualLabel] || []
-    classificationData[actualLabel].push(fileName)
+    classificationData[actualLabel].push(img)
     return
   }
 
-  const expSum = expressions
-    .reduce((sum, { prob }) => sum + Math.exp(prob), 0)
+  const sum = expressions.reduce((res, { prob }) => res + prob, 0)
 
   const vector = expressions.map(({ expression, prob }) => {
     const actualLabel = EXPRESSION_NAME_MAP[expression]
     return {
       expression: actualLabel,
-      prob: Math.exp(prob) / expSum
+      prob: prob / sum
     }
   })
 
-  vectorData.push({ fileName, vector })
+  vectorData.push({ img, vector })
 })
 
 Object.keys(classificationData).forEach(expr => {

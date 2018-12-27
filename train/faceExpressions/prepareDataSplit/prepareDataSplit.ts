@@ -2,7 +2,7 @@ import { shuffleArray } from 'face-api.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { DATA_PATH } from './.env';
+import { DATA_PATH } from '../.env';
 import { emotionMapFromFileStructure, EXPRESSIONS, loadJson } from './common';
 
 const splitArray = (arr: any[], idx: number, maxElems: number) => [arr.slice(0, idx), arr.slice(idx).slice(0, maxElems)]
@@ -169,9 +169,9 @@ const vectorData = dbVectorData.map(withDb('db'))
 
 console.log()
 console.log('vector data:', vectorData.length)
-console.log()
 console.log('db:', dbVectorData.length)
 console.log('imfdb:', imfdbVectorData.length)
+console.log()
 
 const summary = EXPRESSIONS.reduce((acc, expr) => {
   const numTrain = trainData[expr].length

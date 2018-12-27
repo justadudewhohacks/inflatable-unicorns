@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { cv, DATA_PATH } from './.env';
+import { cv, DATA_PATH } from '../.env';
 import { emotionMapFromFileStructure } from './common';
 
 const classesToFlip = [
