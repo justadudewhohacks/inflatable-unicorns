@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="tmp/face-api.js"></script>
+  <script src="FileSaver.js"></script>
+  <script src="commons.js"></script>
+  <script src="randomCrop.js"></script>
+  <script src="js/faceExpressionsCommons.js"></script>
+  <script src="js/train.js"></script>
+</head>
+<body>
+  <div id="container"></div>
+
+  <script>
+    tf = faceapi.tf
+
+    window.net = new faceapi.FaceExpressionNet()
+
+    // uri to weights file of last checkpoint
+    const modelCheckpoint = 'tmp/checkpoints/face_expression_model_13.weights'
+    const startEpoch = 14
+
+    const learningRate = 0.000001
+    window.optimizer = tf.train.adam(learningRate, 0.9, 0.999, 1e-8)
+
+    window.saveEveryNthSample = Infinity
+
+    window.batchSize = 8
+    //window.batchSize = 32
+
+    window.lossValues = []
+
+    window.iterDelay = 0
+    window.withLogging = true
+    window.withRandomCrop = true
+
+    async function load() {
+      window.trainData = (await faceapi.fetchJson('tmp/trainData.json'))
+
+      // fetch the actual output layer weights
+      const weights = await faceapi.fetchNetWeights(modelCheckpoint)
+      await window.net.load(weights)
+      window.net.faceFeatureExtractor.variable()
+      window.net.variable()
+    }
+
+  </script>
+</body>
+</html>

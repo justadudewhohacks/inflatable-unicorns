@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="tmp/face-api.js"></script>
+  <script src="commons.js"></script>
+  <script src="FileSaver.js"></script>
+  <script src="js/faceExpressionsCommons.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.css">
+  <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/js/materialize.min.js"></script>
+</head>
+<body>
+  <div class="center-content page-container" style="margin-left: 20px; margin-top: 20px;">
+    <div style="display: flex;">
+      <div><img id="inputImg" src="" style="max-width: 150px;" /></div>
+      <div id="results" style="margin-left: 20px;">
+      </div>
+      <div style="margin-left: 20px;">
+        <div><button onclick="relabel_disgusted()">disgusted</button></div>
+        <div><button onclick="relabel_surprised()">surprised</button></div>
+        <div><button onclick="relabel_fearful()">fearful</button></div>
+        <div><button onclick="relabel_sad()">sad</button></div>
+        <div><button onclick="relabel_angry()">angry</button></div>
+        <div><button onclick="relabel_happy()">happy</button></div>
+        <div><button onclick="relabel_neutral()">neutral</button></div>
+        <div id="relabeled" style="font-size: xx-large;color: red;">
+          -
+        </div>
+        <div><button onclick="saveRelabeledMap()">save</button></div>
+      </div>
+      <div id="meta" style="margin-left: 20px;">
+        <div id="database">-</div>
+        <div id="imgName">-</div>
+        <div id="expression">-</div>
+      </div>
+    </div>
+    <div class="row input-field" style="margin-right: 20px;">
+      <select id="databaseSelect" onchange="onDatabaseSelect()">
+        <option value="db" selected>db</option>
+        <option value="kaggle">kaggle</option>
+        <option value="jaffe">jaffe</option>
+        <option value="actors-speech">actors-speech</option>
+        <option value="actors-song">actors-song</option>
+      </select>
+      <label>Database</label>
+    </div>
+    <div class="row input-field" style="margin-right: 20px;">
+      <select id="expressionSelect" onchange="onExpressionSelect()">
+        <option value="disgusted" selected>disgusted</option>
+        <option value="surprised">surprised</option>
+        <option value="fearful">fearful</option>
+        <option value="sad">sad</option>
+        <option value="angry">angry</option>
+        <option value="happy">happy</option>
+        <option value="neutral">neutral</option>
+      </select>
+      <label>Expression</label>
+    </div>
+    <div class="row input-field" style="margin-right: 20px;">
+      <select id="trainOrTestSelect" onchange="onExpressionSelect()">
+        <option value="both" selected>Both</option>
+        <option value="trainData" selected>Train Data</option>
+        <option value="testData">Test Data</option>
+      </select>
+      <label>Train or Test Data</label>
+    </div>
+
+    <div style="display: flex; justify-content: center; align-items: center;">
+      <div>
+        <label for="imgByNr">Enter image NR: </label>
+        <input id="imgByNr" type="number" class="bold" value="0" step="1" autocomplete="off" onchange="onImageChanged()"/>
+      </div>
+      <div id="maxImgNr" style="margin-left: 50px;">-</div>
+    </div>
+  </div>
+
+  <script>
+    window.net = new faceapi.FaceExpressionNet()
+    window.modelCheckpoint = 'tmp/checkpoints/face_expression_model_13.weights'
+    window.withPrediction = true
+
+    window.relabeledMap = {}
+
+    async function load() {
+      await window.net.load(await faceapi.fetchNetWeights(window.modelCheckpoint))
+      window.trainData = await faceapi.fetchJson('tmp/trainData.json')
+      window.testData = await faceapi.fetchJson('tmp/testData.json')
+
+      window.both = {}
+      Object.keys(window.trainData).forEach(expr => {
+        window.both[expr] = window.trainData[expr].concat(window.testData[expr])
+      })
+
+      const expressionSelect = $('#expressionSelect')
+      const databaseSeleect = $('#databaseSelect')
+      const trainOrTestSelect = $('#trainOrTestSelect')
+      expressionSelect.material_select()
+      databaseSeleect.material_select()
+      trainOrTestSelect.material_select()
+
+      onImageChanged()
+
+      console.log('loaded')
+    }
+
+    load()
+
+    function onExpressionSelect(e) {
+      const expression = $('#expressionSelect').val()
+      console.log('onExpressionSelect', expression)
+      updateResults()
+    }
+
+    function onDatabaseSelect(e) {
+      const database = $('#databaseSelect').val()
+      console.log('onDatabaseSelect', database)
+      updateResults()
+    }
+
+    function getSelectedImageMeta() {
+      const imgNr = parseInt($('#imgByNr').get(0).value)
+      const label = $('#expressionSelect').get(0).value
+      const database = $('#databaseSelect').val()
+      const trainOrTestData = $('#trainOrTestSelect').get(0).value
+
+      const imagesForExpression = (trainOrTestData === 'both' ? window.both : (trainOrTestData === 'testData' ? window.testData : window.trainData))[label]
+        .filter(d => d.db === database)
+      const data = imagesForExpression[imgNr]
+      if (!data) return { label, imgNr }
+      const maxImgNr = imagesForExpression.length
+      const imgUri = getImageUri({ label, ...data })
+      return { label, imgNr, imgUri, maxImgNr, ...data }
+    }
+
+    function onImageChanged() {
+      const meta = getSelectedImageMeta()
+      console.log(meta)
+      if (!meta.imgUri) return
+      onSelectionChanged(meta.imgUri)
+    }
+
+    async function onSelectionChanged(imgUri) {
+      const img = await faceapi.fetchImage(imgUri)
+      $(`#inputImg`).get(0).src = img.src
+      updateResults()
+    }
+
+
+    function relabel_disgusted() {
+      relabelCurrentResult('disgusted')
+    }
+    function relabel_surprised() {
+      relabelCurrentResult('surprised')
+    }
+    function relabel_fearful() {
+      relabelCurrentResult('fearful')
+    }
+    function relabel_sad() {
+      relabelCurrentResult('sad')
+    }
+    function relabel_angry() {
+      relabelCurrentResult('angry')
+    }
+    function relabel_happy() {
+      relabelCurrentResult('happy')
+    }
+    function relabel_neutral() {
+      relabelCurrentResult('neutral')
+    }
+
+    function relabelCurrentResult(expression) {
+      const imageUri = $(`#imgName`).get(0).innerHTML
+      relabeledMap[imageUri] = expression
+      updateRelabeledOutput()
+    }
+
+    function updateRelabeledOutput() {
+      const imageUri = $(`#imgName`).get(0).innerHTML
+      $(`#relabeled`).get(0).innerHTML = relabeledMap[imageUri] || '-'
+      $('#imgByNr').focus()
+    }
+
+    function saveRelabeledMap() {
+      saveAs(new Blob([JSON.stringify(window.relabeledMap)]), `relabeledMap.json`)
+    }
+
+    async function updateResults() {
+      const { db, label, imgUri, maxImgNr } = getSelectedImageMeta()
+      $(`#database`).get(0).innerHTML = db
+      $(`#imgName`).get(0).innerHTML = imgUri
+      $(`#expression`).get(0).innerHTML = label
+      $(`#maxImgNr`).get(0).innerHTML = maxImgNr
+      updateRelabeledOutput()
+
+      if (window.withPrediction) {
+
+        const inputImgEl = $('#inputImg').get(0)
+        const { width, height } = inputImgEl
+
+        const res = await window.net.predictExpressions(inputImgEl)
+        const sorted = res.sort((a, b) => b.probability - a.probability)
+
+        const resultsToDisplay = sorted.filter(res => res.probability > 0.05)
+
+        const resNode = $('#results').get(0)
+        $(resNode).empty()
+        resultsToDisplay.forEach(res => {
+          const div = document.createElement('div')
+          div.innerHTML = res.expression + ': ' + faceapi.round(res.probability)
+          resNode.appendChild(div)
+        })
+
+      }
+    }
+
+  </script>
+</body>
+</html>

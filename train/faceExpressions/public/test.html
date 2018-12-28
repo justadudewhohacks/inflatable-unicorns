@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="tmp/face-api.js"></script>
+  <script src="FileSaver.js"></script>
+  <script src="commons.js"></script>
+  <script src="js/faceExpressionsCommons.js"></script>
+  <script src="js/test.js"></script>
+</head>
+<body>
+  <div id="container"></div>
+
+  <script>
+    tf = faceapi.tf
+
+    window.numDataPerClass = Infinity
+
+    // load the FaceLandmark68Net and use it's feature extractor since we only
+    // train the output layer of the FaceExpressionNet
+    window.net = new faceapi.FaceExpressionNet()
+
+    // uri to weights file of last checkpoint
+    window.modelCheckpoint = 'tmp/checkpoints/face_expression_model_13.weights'
+
+    async function load() {
+      window.testData = await faceapi.fetchJson('tmp/testData.json')
+
+      // fetch the actual output layer weights
+      const weights = await faceapi.fetchNetWeights(window.modelCheckpoint)
+      await window.net.load(weights)
+
+      console.log('loaded')
+    }
+
+    load()
+
+  </script>
+
+</body>
+</html>
+

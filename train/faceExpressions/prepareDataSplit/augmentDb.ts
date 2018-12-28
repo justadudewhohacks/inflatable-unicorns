@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { getDbUri } from '../common/getDbUri';
 import { cv, DATA_PATH } from '../.env';
+import { getDbUri } from '../common/getDbUri';
 import { loadJson } from './common';
 
 const classesToFlip = [
