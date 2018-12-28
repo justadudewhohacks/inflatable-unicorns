@@ -35,7 +35,6 @@ const imfdbExpressionsMap = loadJson('imfdb_expressions.json', './tmp/')
 const dbVectorData = loadJson('db_expression_vectors.json', './tmp/')
 const imfdbVectorData = loadJson('imfdb_expression_vectors.json', './tmp/')
 
-
 const kaggleExpressionsMap = emotionMapFromFileStructure(
   path.resolve(DATA_PATH, 'kaggle-face-expressions-db/kaggle-face-expressions-db-cleaned')
 )
@@ -75,11 +74,11 @@ EXPRESSIONS.forEach(expression => {
   let numImfdb = 0.7 * imfdbImages.length
 
   if (expression === 'happy') {
-    numDb = 1000
+    numDb = 2000
     numKaggle = 1000
   }
   if (expression === 'neutral') {
-    numDb = 1000
+    numDb = 2300
     numImfdb = 1000
     numActorsSpeechNormal = 0.7 * actorsSpeechNormalImages.length
   }

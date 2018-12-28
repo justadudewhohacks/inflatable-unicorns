@@ -15,10 +15,11 @@ const EXPRESSION_NAME_MAP = {
   fear: 'fearful'
 }
 
-const baseDir = path.resolve(DATA_PATH, 'imfdb')
-const outName = 'imfdb'
+const baseDir = path.resolve(DATA_PATH, 'face-classification')
+const outName = 'face-classification'
 
-const THRESH = 0.8
+const THRESH = 0.5
+const THRESH_NEUTRAL_HAPPY = 0.9
 
 const jsonsDir = path.resolve(baseDir, './azure-classification')
 const jsonFiles = fs.readdirSync(jsonsDir)
@@ -49,6 +50,11 @@ jsonFiles.forEach(jsonFile => {
 
   if (classificationResult) {
     const actualLabel = EXPRESSION_NAME_MAP[classificationResult.expression]
+
+    if ((actualLabel === 'neutral' || actualLabel === 'happy') && classificationResult.prob < THRESH_NEUTRAL_HAPPY) {
+      return
+    }
+
     classificationData[actualLabel] = classificationData[actualLabel] || []
     classificationData[actualLabel].push(img)
     return

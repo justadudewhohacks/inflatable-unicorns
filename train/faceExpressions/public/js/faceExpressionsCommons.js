@@ -79,8 +79,20 @@ function getLandmarksUri({ db, label, img }) {
 function prepareDataForEpoch(data) {
   return faceapi.shuffleArray(
     Object.keys(data).map(label => {
-      let dataForLabel = data[label].map(data => ({ ...data, label }))
-      return dataForLabel
+      const dataForLabel = data[label].map(data => ({ ...data, label }))
+      let dataForLabelOut = dataForLabel
+
+      if (label === 'vectorData') {
+        return dataForLabelOut
+      }
+
+      for (let i = 0; i < 4; i++) {
+        if (dataForLabelOut.length < 4000) {
+          dataForLabelOut = dataForLabelOut.concat(faceapi.shuffleArray(dataForLabel))
+        }
+      }
+
+      return dataForLabelOut.slice(0, 4000)
     }).reduce((flat, arr) => arr.concat(flat))
   )
 }

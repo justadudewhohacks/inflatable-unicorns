@@ -1,7 +1,7 @@
 {
   "name": "inflatable-unicorns",
   "version": "0.0.0",
-  "description": "Fancy things need fance names.",
+  "description": "Fancy things need fancy names.",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

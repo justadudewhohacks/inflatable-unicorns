@@ -17,10 +17,10 @@
     window.net = new faceapi.FaceExpressionNet()
 
     // uri to weights file of last checkpoint
-    const modelCheckpoint = 'tmp/checkpoints/face_expression_model_13.weights'
-    const startEpoch = 14
+    const modelCheckpoint = 'tmp/initial_glorot.weights'
+    const startEpoch = 0
 
-    const learningRate = 0.000001
+    const learningRate = 0.001
     window.optimizer = tf.train.adam(learningRate, 0.9, 0.999, 1e-8)
 
     window.saveEveryNthSample = Infinity

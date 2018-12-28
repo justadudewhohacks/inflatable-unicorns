@@ -20,7 +20,7 @@
     window.net = new faceapi.FaceExpressionNet()
 
     // uri to weights file of last checkpoint
-    window.modelCheckpoint = 'tmp/checkpoints/face_expression_model_13.weights'
+    window.modelCheckpoint = 'tmp/even-split/face_expression_model_2.weights'
 
     async function load() {
       window.testData = await faceapi.fetchJson('tmp/testData.json')
