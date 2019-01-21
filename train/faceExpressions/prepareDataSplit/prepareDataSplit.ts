@@ -2,10 +2,9 @@ import { shuffleArray } from 'face-api.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { splitArray } from '../../../common/common';
 import { DATA_PATH } from '../.env';
 import { emotionMapFromFileStructure, EXPRESSIONS, loadJson } from './common';
-
-const splitArray = (arr: any[], idx: number, maxElems: number) => [arr.slice(0, idx), arr.slice(idx).slice(0, maxElems)]
 
 const withDb = (db: string) => (obj: any) => ({ ...obj, db })
 
