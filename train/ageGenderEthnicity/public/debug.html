@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="tmp/face-api.js"></script>
+  <script src="FileSaver.js"></script>
+  <script src="commons.js"></script>
+  <script src="randomCrop.js"></script>
+  <script src="js/ageGenderEthnicityCommons.js"></script>
+</head>
+<body>
+  <div id="container"></div>
+  <div id="template" style="display: inline-flex; flex-direction: column;">
+    <span class="faceExpression-text"></span>
+    <span class="predicted-text"></span>
+  </div>
+
+  <script>
+    tf = faceapi.tf
+
+    window.net = new faceapi.AgeGenderEthnicityNet()
+
+    // uri to weights file of last checkpoint
+    const modelCheckpoint = 'tmp/initial_glorot.weights'
+    const startEpoch = 0
+
+    const learningRate = 0.001
+    window.optimizer = tf.train.adam(learningRate, 0.9, 0.999, 1e-8)
+
+    window.batchSize = 8
+
+    window.iterDelay = 0
+    window.withLogging = true
+
+    async function load() {
+      window.trainData = (await faceapi.fetchJson('tmp/trainData.json'))
+      window.wikiLabels = (await faceapi.fetchJson('wiki-db/labels.json'))
+      window.imdbLabels = (await faceapi.fetchJson('imdb/labels.json'))
+
+      // fetch the actual output layer weights
+      const weights = await faceapi.fetchNetWeights(modelCheckpoint)
+      await window.net.load(weights)
+      window.net.faceFeatureExtractor.variable()
+      window.net.variable()
+    }
+
+    async function train() {
+      await load()
+
+      const shuffledInputs = prepareDataForEpoch(window.trainData).slice(0, window.batchSize)
+      const batchData = shuffledInputs
+
+      let bImages = await Promise.all(
+        batchData
+          .map(data => faceapi.fetchImage(getImageUri(data)))
+      )
+
+      const labels = getLabels(batchData)
+      const age = labels.map(l => l.age)
+      const gender = labels.map(l => l.gender)
+      const ethnicity = labels.map(l => l.ethnicity || [0, 0, 0, 0, 0])
+
+      const container = document.getElementById('container')
+      const template = document.getElementById('template')
+
+      bImages.forEach((img, i) => {
+        const squaredImg = faceapi.imageToSquare(img, 112, true)
+
+        console.log(i, batchData[i], age, gender, ethnicity)
+
+        const ethnicityMask = labels.map(l => l.ethnicity ? [1] : [0])
+
+        const clone = template.cloneNode(true)
+        clone.id = i
+        const span = clone.firstElementChild
+
+        const g = parseInt(gender[i][0]) === 1
+          ? ('f (' + gender[i][0] + ' )')
+          : ('m (' + gender[i][1] + ' )')
+        const e = labels[i].ethnicity
+          ? (' ,' + labels[i].ethnicity.map((p, i) => ({ p, i })).reduce((a, b) => a.p < b.p ? b : a).i)
+          : ''
+          span.innerHTML = i + ':' + age[i][0] + ',' + g + e
+        clone.insertBefore(squaredImg, span)
+        container.appendChild(clone)
+      })
+
+      for (let epoch = startEpoch; epoch < Infinity; epoch++) {
+
+        const netInput = await faceapi.toNetInput(bImages)
+
+        const loss = optimizer.minimize(() => {
+          const out = window.net.runNet(netInput)
+
+          const labels = getLabels(batchData)
+          const age = labels.map(l => l.age)
+          const gender = labels.map(l => l.gender)
+          const ethnicity = labels.map(l => l.ethnicity || [0, 0, 0, 0, 0])
+          const ethnicityMask = labels.map(l => l.ethnicity ? [1, 1, 1, 1, 1] : [0, 0, 0, 0, 0])
+
+          const ageLabels = tf.tensor2d(age)
+          const genderLabels = tf.tensor2d(gender)
+
+          const ageLoss = tf.mean(tf.square(tf.div(tf.abs(tf.sub(ageLabels, out.age)), 10)))
+
+          const genderLoss = tf.losses.softmaxCrossEntropy(
+            genderLabels,
+            out.gender,
+            tf.Reduction.MEAN
+          )
+
+          const ethnicityLabels = tf.tensor2d(ethnicity)
+          const ethnicityMaskTensor = tf.tensor2d(ethnicityMask)
+          const ethnicityLoss = tf.losses.softmaxCrossEntropy(
+            tf.mul(ethnicityMaskTensor, ethnicityLabels),
+            out.ethnicity
+          )
+
+          //const loss = ageLoss.add(genderLoss).add(ethnicityLoss)
+          const loss = ethnicityLoss
+
+
+          const eLoss = ethnicityLoss.dataSync()[0]
+          if (eLoss > 10) {
+            console.log(ethnicityMaskTensor.shape, ethnicityMaskTensor.dataSync())
+            console.log(ethnicityLabels.shape, ethnicityLabels.dataSync())
+            console.log(out.ethnicity.shape, out.ethnicity.dataSync())
+            throw new Error('asd')
+          }
+          //console.log('age loss: ', ageLoss.dataSync()[0])
+          //console.log('gender loss: ', genderLoss.dataSync()[0])
+          //console.log('ethnicity loss: ', eLoss)
+
+          const predictedByBatchAge = tf.unstack(out.age)
+          const predictedByBatchGender = tf.unstack(out.gender)
+          const predictedByBatchEthnicity = tf.unstack(out.ethnicity)
+          predictedByBatchAge.forEach((p, i) => {
+            const ageData = p.dataSync()
+            const genderData = tf.softmax(predictedByBatchGender[i]).dataSync()
+            const ethnicityData = tf.softmax(predictedByBatchEthnicity[i]).dataSync()
+
+            const container = document.getElementById(i)
+
+            const predNode = container.children[container.children.length - 1]
+
+            const g = genderData[0] > genderData[1]
+              ? ('f (' + faceapi.round(genderData[0]) + ' )')
+              : ('m (' + faceapi.round(genderData[1]) + ' )')
+
+            const e = Array.from(ethnicityData).map((p, i) => ({ p, i })).reduce((a, b) => a.p < b.p ? b : a).i
+            predNode.innerHTML = i + ':' + parseInt(ageData) + ', ' + g + ', ' + e
+          })
+
+          return loss
+        }, true)
+
+        // start next iteration without waiting for loss data
+
+        loss.data().then(data => {
+          const lossValue = data[0]
+          log(`epoch ${epoch}, loss: ${lossValue}`)
+          loss.dispose()
+        })
+
+        if (window.iterDelay) {
+          await delay(window.iterDelay)
+        } else {
+          await tf.nextFrame()
+        }
+      }
+    }
+
+  </script>
+</body>
+</html>

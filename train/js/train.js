@@ -22,13 +22,20 @@ async function train() {
     }
     window.lossValues[epoch] = 0
 
-    const shuffledInputs = prepareDataForEpoch(window.trainData)
-    console.log(shuffledInputs)
+    const createBatches = window.createBatches || function(data, batchSize) {
+      const shuffledInputs = prepareDataForEpoch(data)
+      const batches = []
+      for (let dataIdx = 0; dataIdx < shuffledInputs.length; dataIdx += batchSize) {
+        batches.push(shuffledInputs.slice(dataIdx, dataIdx + batchSize))
+      }
+      return batches
+    }
 
-    for (let dataIdx = 0; dataIdx < shuffledInputs.length; dataIdx += window.batchSize) {
+    const batches = createBatches(window.trainData, window.batchSize)
+    console.log(batches)
+
+    for (const [batchIdx, batchData] of batches.entries()) {
       const tsIter = Date.now()
-
-      const batchData = shuffledInputs.slice(dataIdx, dataIdx + window.batchSize)
 
       let bImages = await Promise.all(
         batchData
@@ -54,27 +61,11 @@ async function train() {
         })
       }
 
-      const bOneHotVectors = batchData
-        .map(data => getLabelOneHotVector(data))
-
       let tsBackward = Date.now()
-      let tsForward = Date.now()
+
       const netInput = await faceapi.toNetInput(bImages)
-      tsForward = Date.now() - tsForward
+      const loss = computeLoss(netInput, batchData)
 
-      const loss = optimizer.minimize(() => {
-        tsBackward = Date.now()
-        const labels = tf.tensor2d(bOneHotVectors)
-        const out = window.net.runNet(netInput)
-
-        const loss = tf.losses.softmaxCrossEntropy(
-          labels,
-          out,
-          tf.Reduction.MEAN
-        )
-
-        return loss
-      }, true)
       tsBackward = Date.now() - tsBackward
 
       // start next iteration without waiting for loss data
@@ -82,14 +73,13 @@ async function train() {
       loss.data().then(data => {
         const lossValue = data[0]
         window.lossValues[epoch] += lossValue
-        window.withLogging && log(`epoch ${epoch}, dataIdx ${dataIdx} - loss: ${lossValue}, ( ${window.lossValues[epoch]})`)
+        window.withLogging && log(`epoch ${epoch}, batchIdx ${batchIdx} - loss: ${lossValue}, ( ${window.lossValues[epoch]})`)
         loss.dispose()
+        window.displayProgress && window.displayProgress(epoch, batchIdx, batches.length, window.lossValues[epoch])
       })
 
-      window.withLogging && log(`epoch ${epoch}, dataIdx ${dataIdx} - forward: ${tsForward} ms, backprop: ${tsBackward} ms, iter: ${Date.now() - tsIter} ms`)
-      if (window.logsilly)  {
-        log(`fetch: ${tsFetch} ms, pts: ${tsFetchPts} ms, jpgs: ${tsFetchJpgs} ms, bufferToImage: ${tsBufferToImage} ms`)
-      }
+      window.withLogging && log(`epoch ${epoch}, batchIdx ${batchIdx} - backprop: ${tsBackward} ms, iter: ${Date.now() - tsIter} ms`)
+
       if (window.iterDelay) {
         await delay(window.iterDelay)
       } else {

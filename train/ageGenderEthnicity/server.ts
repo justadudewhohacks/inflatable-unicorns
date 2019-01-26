@@ -14,5 +14,6 @@ app.use(express.static(path.join(__dirname, '../../node_modules/file-saver/dist'
 
 app.get('/', (_, res) => res.redirect('/train'))
 app.get('/train', (_, res) => res.sendFile(path.join(publicDir, 'train.html')))
+app.get('/debug', (_, res) => res.sendFile(path.join(publicDir, 'debug.html')))
 
 app.listen(8000, () => console.log('Listening on port 8000!'))

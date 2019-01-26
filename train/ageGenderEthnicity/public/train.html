@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="tmp/face-api.js"></script>
+  <script src="FileSaver.js"></script>
+  <script src="commons.js"></script>
+  <script src="randomCrop.js"></script>
+  <script src="js/ageGenderEthnicityCommons.js"></script>
+  <script src="train.js"></script>
+</head>
+<body>
+  <div><span>epoch:</span><span id="epoch">-</span></div>
+  <div><span>batchIdx:</span><span id="batchIdx">-</span></div>
+  <div><span>accumulatedLoss:</span><span id="accumulatedLoss">-</span></div>
+
+  <script>
+    tf = faceapi.tf
+
+    window.net = new faceapi.AgeGenderEthnicityNet()
+
+    // uri to weights file of last checkpoint
+    const modelCheckpoint = 'tmp/initial_glorot.weights'
+    const startEpoch = 0
+
+    const learningRate = 0.001
+    window.optimizer = tf.train.adam(learningRate, 0.9, 0.999, 1e-8)
+
+    window.saveEveryNthSample = Infinity
+
+    window.batchSize = 8
+    //window.batchSize = 32
+
+    window.lossValues = []
+
+    window.iterDelay = 0
+    window.withLogging = true
+    window.withRandomCrop = true
+
+    async function load() {
+      window.trainData = (await faceapi.fetchJson('tmp/trainData.json'))
+      window.wikiLabels = (await faceapi.fetchJson('wiki-db/labels.json'))
+      window.imdbLabels = (await faceapi.fetchJson('imdb/labels.json'))
+
+      // fetch the actual output layer weights
+      const weights = await faceapi.fetchNetWeights(modelCheckpoint)
+      await window.net.load(weights)
+      window.net.faceFeatureExtractor.variable()
+      window.net.variable()
+    }
+
+    function computeLoss(netInput, batchData) {
+      return optimizer.minimize(() => {
+
+        const out = window.net.runNet(netInput)
+
+        const labels = getLabels(batchData)
+        const age = labels.map(l => l.age)
+        const gender = labels.map(l => l.gender)
+
+        const ageLabels = tf.tensor2d(age)
+        const genderLabels = tf.tensor2d(gender)
+
+        const ageLoss = tf.mean(tf.square(tf.div(tf.abs(tf.sub(ageLabels, out.age)), 10)))
+        const genderLoss = tf.losses.softmaxCrossEntropy(
+          genderLabels,
+          out.gender,
+          tf.Reduction.MEAN
+        )
+
+        let loss = ageLoss.add(genderLoss)
+
+        if (batchData[0].db === 'utk') {
+          const ethnicity = labels.map(l => l.ethnicity)
+          const ethnicityLabels = tf.tensor2d(ethnicity)
+          const ethnicityLoss = tf.losses.softmaxCrossEntropy(
+            ethnicityLabels,
+            out.ethnicity,
+            tf.Reduction.MEAN
+          )
+          loss = loss.add(ethnicityLoss)
+        }
+
+        return loss
+      }, true)
+    }
+
+    function displayProgress(epoch, batchIdx, numBatches, accumulatedLoss) {
+      document.getElementById('epoch').innerHTML = epoch
+      document.getElementById('batchIdx').innerHTML = batchIdx + ' | ' + numBatches
+      document.getElementById('accumulatedLoss').innerHTML = faceapi.round(accumulatedLoss)
+    }
+
+  </script>
+</body>
+</html>

@@ -6,7 +6,7 @@
   <script src="commons.js"></script>
   <script src="randomCrop.js"></script>
   <script src="js/faceExpressionsCommons.js"></script>
-  <script src="js/train.js"></script>
+  <script src="train.js"></script>
 </head>
 <body>
   <div id="container"></div>
@@ -42,6 +42,23 @@
       await window.net.load(weights)
       window.net.faceFeatureExtractor.variable()
       window.net.variable()
+    }
+
+    function computeLoss(netInput, batchData) {
+      return optimizer.minimize(() => {
+        const bOneHotVectors = batchData
+          .map(data => getLabelOneHotVector(data))
+        const labels = tf.tensor2d(bOneHotVectors)
+        const out = window.net.runNet(netInput)
+
+        const loss = tf.losses.softmaxCrossEntropy(
+          labels,
+          out,
+          tf.Reduction.MEAN
+        )
+
+        return loss
+      }, true)
     }
 
   </script>
