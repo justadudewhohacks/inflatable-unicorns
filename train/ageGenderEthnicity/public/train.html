@@ -19,8 +19,8 @@
     window.net = new faceapi.AgeGenderEthnicityNet()
 
     // uri to weights file of last checkpoint
-    const modelCheckpoint = 'tmp/initial_glorot.weights'
-    const startEpoch = 0
+    const modelCheckpoint = 'tmp/all/age_gender_ethnicity_model_1.weights'
+    const startEpoch = 2
 
     const learningRate = 0.001
     window.optimizer = tf.train.adam(learningRate, 0.9, 0.999, 1e-8)

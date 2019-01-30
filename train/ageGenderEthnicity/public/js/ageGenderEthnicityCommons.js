@@ -44,12 +44,18 @@ function getLabels(batchData) {
       gender[g] = 0
       ethnicity = [0, 0, 0, 0, 0]
       ethnicity[e] = 1
+      if (isNaN(age[0]) || age[0] < 0 || age[0] > 120)
+        console.warn('invalid age (%s) for file: %s', age[0], file)
+      if (!['0', '1'].some(val => val === g))
+        console.warn('failed to parse gender (%s) for file: %s', g, file)
+      if (!['0', '1', '2', '3', '4'].some(val => val === e))
+        console.warn('failed to parse ethnicity (%s) for file: %s', e, file)
     } else if (db === 'wiki') {
-      const l = wikiLabels[file.replace('_0.jpg', '.jpg')]
+      const l = window.wikiLabels[file.replace('_0.jpg', '.jpg')]
       age[0] = l.age
       gender[l.gender] = 1
     } else if (db === 'imdb') {
-      const l = imdbLabels[file.replace('_0.jpg', '.jpg')]
+      const l = window.imdbLabels[file.replace('_0.jpg', '.jpg')]
       age[0] = l.age
       gender[l.gender] = 1
     } else {
