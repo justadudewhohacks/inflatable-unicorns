@@ -12,6 +12,7 @@
   <div><span>epoch:</span><span id="epoch">-</span></div>
   <div><span>batchIdx:</span><span id="batchIdx">-</span></div>
   <div><span>accumulatedLoss:</span><span id="accumulatedLoss">-</span></div>
+  <div id="container"></div>
 
   <script>
     tf = faceapi.tf
@@ -19,8 +20,9 @@
     window.net = new faceapi.AgeGenderEthnicityNet()
 
     // uri to weights file of last checkpoint
-    const modelCheckpoint = 'tmp/all/age_gender_ethnicity_model_1.weights'
-    const startEpoch = 2
+    const modelCheckpoint = 'tmp/aligned/age_gender_ethnicity_model_5.weights'
+    const startEpoch = 6
+    window.numBatchesPerEpoch = 5000
 
     const learningRate = 0.001
     window.optimizer = tf.train.adam(learningRate, 0.9, 0.999, 1e-8)
@@ -34,7 +36,8 @@
 
     window.iterDelay = 0
     window.withLogging = true
-    window.withRandomCrop = true
+    //window.withRandomCrop = true
+    window.withFaceAlignment = true
 
     async function load() {
       window.trainData = (await faceapi.fetchJson('tmp/trainData.json'))

@@ -66,19 +66,32 @@ function getLabels(batchData) {
   })
 }
 
+let remainingBatches = []
+
 function createBatches(data, batchSize) {
-  const dataWithEthnicity = faceapi.shuffleArray(data.filter(d => d.db === 'utk'))
-  const dataWithoutEthnicity = faceapi.shuffleArray(data.filter(d => d.db !== 'utk'))
 
-  const batches = []
-  for (let dataIdx = 0; dataIdx < dataWithEthnicity.length; dataIdx += batchSize) {
-    batches.push(dataWithEthnicity.slice(dataIdx, dataIdx + batchSize))
-  }
-  for (let dataIdx = 0; dataIdx < dataWithoutEthnicity.length; dataIdx += batchSize) {
-    batches.push(dataWithoutEthnicity.slice(dataIdx, dataIdx + batchSize))
+  if (!window.numBatchesPerEpoch) {
+    throw new Error('window.numBatchesPerEpoch is undefined')
   }
 
-  return faceapi.shuffleArray(batches)
+  if (remainingBatches.length < window.numBatchesPerEpoch) {
+    const dataWithEthnicity = faceapi.shuffleArray(data.filter(d => d.db === 'utk'))
+    const dataWithoutEthnicity = faceapi.shuffleArray(data.filter(d => d.db !== 'utk'))
+
+    const batches = []
+    for (let dataIdx = 0; dataIdx < dataWithEthnicity.length; dataIdx += batchSize) {
+      batches.push(dataWithEthnicity.slice(dataIdx, dataIdx + batchSize))
+    }
+    for (let dataIdx = 0; dataIdx < dataWithoutEthnicity.length; dataIdx += batchSize) {
+      batches.push(dataWithoutEthnicity.slice(dataIdx, dataIdx + batchSize))
+    }
+
+    remainingBatches = remainingBatches.concat(faceapi.shuffleArray(batches))
+  }
+
+  const nextBatches = remainingBatches.slice(0, window.numBatchesPerEpoch)
+  remainingBatches = remainingBatches.slice(window.numBatchesPerEpoch)
+  return nextBatches
 }
 
 async function onEpochDone(epoch, params) {

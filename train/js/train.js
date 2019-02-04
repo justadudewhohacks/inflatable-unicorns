@@ -1,3 +1,17 @@
+function save(epoch) {
+  onEpochDone(
+    epoch,
+    new Float32Array(
+      (
+        window.net.faceFeatureExtractor
+          ? Array.from(window.net.faceFeatureExtractor.serializeParams())
+          : []
+      )
+        .concat(Array.from(window.net.serializeParams()))
+    )
+  )
+}
+
 async function train() {
   await load()
 
@@ -6,17 +20,7 @@ async function train() {
     if (epoch !== startEpoch) {
       // ugly hack to wait for loss datas for that epoch to be resolved
       setTimeout(
-        () => onEpochDone(
-          epoch - 1,
-          new Float32Array(
-            (
-              window.net.faceFeatureExtractor
-                ? Array.from(window.net.faceFeatureExtractor.serializeParams())
-                : []
-            )
-              .concat(Array.from(window.net.serializeParams()))
-          )
-        ),
+        () => save(epoch - 1),
         10000
       )
     }
@@ -42,13 +46,17 @@ async function train() {
           .map(data => faceapi.fetchImage(getImageUri(data)))
       )
 
-      if (window.withRandomCrop) {
-        const landmarks = await Promise.all(
+      let landmarks
+
+      if (window.withRandomCrop || window.withFaceAlignment) {
+        landmarks = await Promise.all(
           batchData
             .map(data => getLandmarksUri(data))
             .map(url => url ? faceapi.fetchJson(url) : null)
         )
+      }
 
+      if (window.withRandomCrop) {
         bImages = bImages.map((img, i) => {
           if (!landmarks[i]) {
             return img
@@ -59,6 +67,18 @@ async function train() {
 
           return croppedImage
         })
+      }
+
+      if (window.withFaceAlignment) {
+        bImages = await Promise.all(bImages.map(async (img, i) => {
+          if (!landmarks[i]) {
+            return img
+          }
+
+          const alignedRect = new faceapi.FaceLandmarks68(landmarks[i].map(({ x, y }) => new faceapi.Point(x, y)), img).align()
+          const [alignedFace] = await faceapi.extractFaces(img, [alignedRect])
+          return alignedFace
+        }))
       }
 
       let tsBackward = Date.now()
