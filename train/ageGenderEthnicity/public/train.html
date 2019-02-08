@@ -20,11 +20,11 @@
     window.net = new faceapi.AgeGenderEthnicityNet()
 
     // uri to weights file of last checkpoint
-    const modelCheckpoint = 'tmp/aligned/age_gender_ethnicity_model_5.weights'
-    const startEpoch = 6
-    window.numBatchesPerEpoch = 5000
+    const modelCheckpoint = 'tmp/utk-wiki/age_gender_ethnicity_model_37.weights'
+    const startEpoch = 38
+    window.numBatchesPerEpoch = Infinity
 
-    const learningRate = 0.001
+    const learningRate = 0.000005
     window.optimizer = tf.train.adam(learningRate, 0.9, 0.999, 1e-8)
 
     window.saveEveryNthSample = Infinity
@@ -36,19 +36,25 @@
 
     window.iterDelay = 0
     window.withLogging = true
-    //window.withRandomCrop = true
-    window.withFaceAlignment = true
+    window.withRandomCrop = true
+    //window.withFaceAlignment = true
 
     async function load() {
       window.trainData = (await faceapi.fetchJson('tmp/trainData.json'))
       window.wikiLabels = (await faceapi.fetchJson('wiki-db/labels.json'))
-      window.imdbLabels = (await faceapi.fetchJson('imdb/labels.json'))
+      //window.imdbLabels = (await faceapi.fetchJson('imdb/labels.json'))
 
       // fetch the actual output layer weights
       const weights = await faceapi.fetchNetWeights(modelCheckpoint)
       await window.net.load(weights)
       window.net.faceFeatureExtractor.variable()
       window.net.variable()
+    }
+
+    function computeAgeLoss(labels, predictions) {
+      const ageDiffs = tf.div(tf.abs(tf.sub(tf.tensor2d(labels), predictions)), 5)
+      const ageMultipliersTensor = tf.tensor2d(labels.map(l => [getAgeMultiplier(l[0])]))
+      return tf.mean(tf.mul(ageDiffs, ageMultipliersTensor))
     }
 
     function computeLoss(netInput, batchData) {
@@ -60,10 +66,11 @@
         const age = labels.map(l => l.age)
         const gender = labels.map(l => l.gender)
 
-        const ageLabels = tf.tensor2d(age)
+        //const ageLabels = tf.tensor2d(age)
         const genderLabels = tf.tensor2d(gender)
 
-        const ageLoss = tf.mean(tf.square(tf.div(tf.abs(tf.sub(ageLabels, out.age)), 10)))
+        //const ageLoss = tf.mean(tf.square(tf.div(tf.abs(tf.sub(ageLabels, out.age)), 10)))
+        const ageLoss = computeAgeLoss(age, out.age)
         const genderLoss = tf.losses.softmaxCrossEntropy(
           genderLabels,
           out.gender,

@@ -1,5 +1,5 @@
 async function test(dbs) {
-  dbs = dbs || ['utk', 'wiki', 'imdb']
+  dbs = dbs || ['utk', 'wiki']//, 'imdb']
   dbs = Array.isArray(dbs) ? dbs : [dbs]
 
   const resultsByDb = []
@@ -10,11 +10,12 @@ async function test(dbs) {
 
   const resultTxt = []
 
-  resultsByDb.forEach(({ db, size, ageError, genderPreds, genderError, ethnicityPreds, ethnicityPreds05 }) => {
+  resultsByDb.forEach(({ db, size, ageError, weightedAgeError, genderPreds, genderError, ethnicityPreds, ethnicityPreds05 }) => {
     resultTxt.push('')
     resultTxt.push(db + '')
     resultTxt.push('------')
     resultTxt.push('ageError:' + (ageError / size))
+    resultTxt.push('weightedAgeError:' + (weightedAgeError / size))
     resultTxt.push('genderPreds: ' + (genderPreds / size))
     resultTxt.push('genderError: ' + (genderError / size))
     if (db === 'utk') {
@@ -29,6 +30,7 @@ async function test(dbs) {
     total.size = (total.size || 0) + curr.size
     total.sizeEthnicity = (total.sizeEthnicity || 0) + (curr.db === 'utk' ? curr.size : 0)
     total.ageError = (total.ageError || 0) + curr.ageError
+    total.weightedAgeError = (total.weightedAgeError || 0) + curr.weightedAgeError
     total.genderPreds = (total.genderPreds || 0) + curr.genderPreds
     total.genderError = (total.genderError || 0) + curr.genderError
     total.ethnicityPreds = (total.ethnicityPreds || 0) + (curr.ethnicityPreds || 0)
@@ -39,6 +41,7 @@ async function test(dbs) {
   resultTxt.push('total accuracy')
   resultTxt.push('------')
   resultTxt.push('ageError: ' + (total.ageError / total.size))
+  resultTxt.push('weightedAgeError: ' + (total.weightedAgeError / total.size))
   resultTxt.push('genderPreds: ' + (total.genderPreds / total.size))
   resultTxt.push('genderError: ' + (total.genderError / total.size))
   resultTxt.push('ethnicityPreds: ' + (total.ethnicityPreds / total.sizeEthnicity))
@@ -53,7 +56,10 @@ async function testForDb(db) {
   console.log(db, window.modelCheckpoint)
 
   let testData = window.testData.filter(data => data.db === db)
+  let ageCategoryCounts = []
+  let ageCategoryErrors = []
   let ageError = 0
+  let weightedAgeError = 0
   let genderPreds = 0
   let genderError = 0
   let ethnicityPreds = 0
@@ -71,7 +77,11 @@ async function testForDb(db) {
 
     const [{ age, gender, ethnicity }] = getLabels([data])
 
-    ageError = ageError + Math.abs(age - pred.age)
+    const errAge = Math.abs(age - pred.age)
+    ageError = ageError + errAge
+    weightedAgeError = weightedAgeError + (getAgeMultiplier(age) * errAge)
+    ageCategoryErrors[getAgeCategoryIndex(age)] = (ageCategoryErrors[getAgeCategoryIndex(age)] || 0) + errAge
+    ageCategoryCounts[getAgeCategoryIndex(age)] = (ageCategoryCounts[getAgeCategoryIndex(age)] || 0) + 1
 
     if (gender.length === 2) {
       const expectedGender = faceapi.AgeGenderEthnicityNet.decodeGenderProbabilities(gender)
@@ -103,6 +113,8 @@ async function testForDb(db) {
 
   console.log('')
   console.log('ageError:', ageError / size)
+  console.log('weightedAgeError:', weightedAgeError / size)
+  console.log('ageCategoryErrors:', ageCategoryErrors.map((err, i) => ({ err: err / ageCategoryCounts[i], age: ageCategories[i] })))
   console.log('genderPreds:', genderPreds / size)
   console.log('genderError:', genderError / size)
   if (db === 'utk') {
@@ -110,5 +122,5 @@ async function testForDb(db) {
     console.log('ethnicityPreds05:', ethnicityPreds05 / size)
   }
 
-  return { ageError, size, genderPreds, genderError, ethnicityPreds, ethnicityPreds05 }
+  return { ageError, weightedAgeError, ageCategoryErrors, ageCategoryCounts, size, genderPreds, genderError, ethnicityPreds, ethnicityPreds05 }
 }

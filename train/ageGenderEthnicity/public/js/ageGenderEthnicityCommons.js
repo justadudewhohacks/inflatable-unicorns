@@ -70,6 +70,17 @@ let remainingBatches = []
 
 function createBatches(data, batchSize) {
 
+  // TODO fix imdb labels
+  data = data.filter(d => d.db !== 'imdb')
+
+  const cat = []
+  data.forEach(d => {
+    const { age } = getLabels([d])[0]
+    const idx = getAgeCategoryIndex(age)
+    cat[idx] = (cat[idx] || 0) + 1
+  })
+  console.log(cat)
+
   if (!window.numBatchesPerEpoch) {
     throw new Error('window.numBatchesPerEpoch is undefined')
   }
@@ -100,5 +111,17 @@ async function onEpochDone(epoch, params) {
   const numData = window.trainData.length
   const loss = window.lossValues[epoch]
   saveAs(new Blob([JSON.stringify({ loss, avgLoss: loss / numData })]), `age_gender_ethnicity_model_${epoch}.json`)
+}
+
+// estimated with function estimator
+function getAgeMultiplier(age) {
+  return 1 - (0.018 * age) + 0.0001 * Math.pow(age, 2)
+}
+
+const ageCategories = [2, 4, 8, 12, 18, 24, 38, 54, 80, Infinity]
+
+function getAgeCategoryIndex(age) {
+  const idx = ageCategories.findIndex(a => a > age) - 1
+  return idx < 0 ? 0 : idx
 }
 
