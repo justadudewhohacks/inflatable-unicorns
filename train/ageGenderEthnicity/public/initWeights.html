@@ -2,6 +2,7 @@
 <html>
 <head>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@0.12.0"> </script>
+  <script src="FileSaver.js"></script>
   <script src="../../../node_modules/file-saver/dist/FileSaver.js"></script>
 </head>
 <body>
@@ -12,6 +13,12 @@
       onclick="save()"
     >
       Save
+    </button>
+    <button
+      class="waves-effect waves-light btn"
+      onclick="extendWeights()"
+    >
+      Extend
     </button>
   </div>
 
@@ -82,6 +89,50 @@
           .map(toDataArray)
       )
       return new Float32Array(separableConvWeights.concat(fc))
+    }
+
+    async function extendWeights() {
+      const initializer = tf.initializers.glorotNormal()
+
+      const baseWeights = Array.from(new Float32Array(await (await fetch(`tmp/front.weights`)).arrayBuffer()))
+
+      const classifiersSize = (256 * 1) + 1 + (256 * 2) + 2 + (256 * 5) + 5
+      const front = baseWeights//.slice(0, baseWeights.length - classifiersSize)
+
+      function initSeparableConvWeights(inChannels, outChannels) {
+        return flatten(
+          [
+            // depthwise filter
+            initializer.apply([3, 3, inChannels, 1]),
+            // pointwise filter
+            initializer.apply([1, 1, inChannels, outChannels]),
+            // bias
+            tf.zeros([outChannels])
+          ]
+            .map(toDataArray)
+        )
+      }
+
+      const separableConvWeights = flatten([
+        initSeparableConvWeights(256, 512),
+        initSeparableConvWeights(512, 512),
+        initSeparableConvWeights(512, 512),
+        initSeparableConvWeights(512, 512)
+      ])
+
+      const fc = flatten(
+        [
+          initializer.apply([1, 1, 512, 1]),
+          tf.zeros([1]),
+          initializer.apply([1, 1, 512, 2]),
+          tf.zeros([2]),
+          initializer.apply([1, 1, 512, 5]),
+          tf.zeros([5])
+        ]
+          .map(toDataArray)
+      )
+      const outWeights = new Float32Array(front.concat(separableConvWeights).concat(fc))
+      saveAs(new Blob([outWeights]), `initial_glorot.weights`)
     }
 
     function save() {

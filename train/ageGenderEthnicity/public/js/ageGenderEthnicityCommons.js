@@ -11,6 +11,10 @@ function getImageUri({ db, file }) {
     return `imdb/cropped-images/${file}`
   }
 
+  if (db === 'appareal') {
+    return `appareal-db/cropped-images/${file}`
+  }
+
   throw new Error(`getImageUri - unknown db ${db}`)
 }
 
@@ -26,6 +30,10 @@ function getLandmarksUri({ db, file }) {
 
   if (db === 'imdb') {
     return `imdb/landmarks/${landmarksFile}`
+  }
+
+  if (db === 'appareal') {
+    return `appareal-db/landmarks/${landmarksFile}`
   }
 
   return null
@@ -58,6 +66,11 @@ function getLabels(batchData) {
       const l = window.imdbLabels[file.replace('_0.jpg', '.jpg')]
       age[0] = l.age
       gender[l.gender] = 1
+    } else if (db === 'appareal') {
+      const l = window.apparealLabels[file]
+      age[0] = l.age
+      gender[l.gender] = 1
+      // TODO ethnicity
     } else {
       throw new Error(`getLabels - unknown db ${db}`)
     }
@@ -115,7 +128,8 @@ async function onEpochDone(epoch, params) {
 
 // estimated with function estimator
 function getAgeMultiplier(age) {
-  return 1 - (0.018 * age) + 0.0001 * Math.pow(age, 2)
+  return 1 - (0.0050  * age)
+  //return 1 - (0.018 * age) + 0.0001 * Math.pow(age, 2)
 }
 
 const ageCategories = [2, 4, 8, 12, 18, 24, 38, 54, 80, Infinity]

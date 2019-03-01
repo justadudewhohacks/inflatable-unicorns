@@ -18,11 +18,13 @@
     window.net = new faceapi.AgeGenderEthnicityNet()
 
     // uri to weights file of last checkpoint
-    window.modelCheckpoint = 'tmp/utk-wiki/age_gender_ethnicity_model_37.weights'
+    window.modelCheckpoint = 'tmp/age-utk-wiki-appareal/age_gender_ethnicity_model_20.weights'
+    //window.withFaceAlignment = true
 
     async function load() {
       window.testData = await faceapi.fetchJson('tmp/testData.json')
       window.wikiLabels = (await faceapi.fetchJson('wiki-db/labels.json'))
+      window.apparealLabels = (await faceapi.fetchJson('appareal-db/labels.json'))
       //window.imdbLabels = (await faceapi.fetchJson('imdb/labels.json'))
 
       // fetch the actual output layer weights

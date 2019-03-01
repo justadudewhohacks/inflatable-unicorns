@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="tmp/face-api.js"></script>
+  <script src="FileSaver.js"></script>
+  <script src="commons.js"></script>
+  <script src="js/ageGenderEthnicityCommons.js"></script>
+</head>
+<body>
+  <script>
+
+    const getCheckpoint = (epoch) => `tmp/age-utk/age_gender_ethnicity_model_${epoch}.weights`
+
+    async function run(cp1, cp2) {
+      window.net1 = new faceapi.AgeGenderEthnicityNet()
+      window.net2 = new faceapi.AgeGenderEthnicityNet()
+      const weights1 = await faceapi.fetchNetWeights(getCheckpoint(cp1))
+      const weights2 = await faceapi.fetchNetWeights(getCheckpoint(cp2))
+      await window.net1.load(weights1)
+      await window.net2.load(weights2)
+
+      console.log('loading done')
+
+      const p1 = window.net1.faceFeatureExtractor.getParamList()
+      const p2 = window.net2.faceFeatureExtractor.getParamList()
+      p1.forEach(({ path, tensor: t1 }) => {
+
+
+        const t2 = p2.find(p => p.path === path).tensor
+
+        const diff = faceapi.euclideanDistance(t1.dataSync(), t2.dataSync())
+
+        console.log(path, diff, t2.size)
+
+      })
+    }
+
+  </script>
+</body>
+</html>

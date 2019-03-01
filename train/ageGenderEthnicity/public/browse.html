@@ -31,7 +31,7 @@
       <label>Database</label>
     </div>
     <div class="row input-field" style="margin-right: 20px;">
-      <select id="trainOrTestSelect" onchange="onExpressionSelect()">
+      <select id="trainOrTestSelect" onchange="onTrainOrTestDataSelected()">
         <option value="both" selected>Both</option>
         <option value="trainData" selected>Train Data</option>
         <option value="testData">Test Data</option>
@@ -46,12 +46,20 @@
       </div>
       <div id="maxImgNr" style="margin-left: 50px;">-</div>
     </div>
+    <div>
+      <label for="age-min">Age Min: </label>
+      <input id="age-min" type="number" class="bold" value="0" step="1" autocomplete="off" onchange="onAgeRangeChanged()"/>
+    </div>
+    <div>
+      <label for="age-max">Age Max: </label>
+      <input id="age-max" type="number" class="bold" value="100" step="1" autocomplete="off" onchange="onAgeRangeChanged()"/>
+    </div>
   </div>
 
   <script>
     window.net = new faceapi.AgeGenderEthnicityNet()
     window.modelCheckpoint = 'tmp/utk-wiki/age_gender_ethnicity_model_37.weights'
-    window.withPrediction = true
+    window.withPrediction = false
 
     async function load() {
       window.trainData = (await faceapi.fetchJson('tmp/trainData.json'))
@@ -67,6 +75,7 @@
       const trainOrTestSelect = $('#trainOrTestSelect')
       databaseSelect.material_select()
       trainOrTestSelect.material_select()
+
 
       onImageChanged()
     }
@@ -86,11 +95,22 @@
       updateResults()
     }
 
+    function onTrainOrTestDataSelected() {
+      updateResults()
+    }
+
+
+    function onAgeRangeChanged() {
+      updateResults()
+    }
+
     function getSelectedImageMeta() {
       const imgNr = parseInt($('#imgByNr').get(0).value)
       const database = $('#databaseSelect').val()
       const trainOrTestData = $('#trainOrTestSelect').get(0).value
 
+      const minAge = $('#age-min').val()
+      const maxAge = $('#age-max').val()
       const allData = (trainOrTestData === 'both'
         ? window.testData.concat(window.trainData)
         : (trainOrTestData === 'testData'
@@ -99,12 +119,15 @@
           )
         )
         .filter(d => d.db === database)
+        .filter(d => {
+          const age = getLabels([d])[0].age[0]
+          return minAge <= age && age <= maxAge
+        })
 
-      const data = allData[imgNr]
-      const labels = getLabels([data])[0]
       const maxImgNr = allData.length
-      const imgUri = getImageUri(data)
-      console.log(labels)
+      const data = allData[imgNr]
+      const labels = data ? getLabels([data])[0] : {}
+      const imgUri = data ? getImageUri(data) : null
       return { imgNr, imgUri, maxImgNr, ...data, ...labels }
     }
 

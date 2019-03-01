@@ -1,9 +1,8 @@
 import { splitArray } from '../../../common/common';
 import { shuffleArray } from 'face-api.js';
 
-export function splitWikiImdb(files: string[], labels: any[]): [string[], string[]] {
+export function splitData(files: string[], getLabelsForFile: (file: string) => any): [string[], string[]] {
 
-  const getLabelsForFile = (file: string) => labels[file.replace('_0.jpg', '.jpg')]
   const cleanFiles = files
     .filter(file => getLabelsForFile(file).gender !== null)
     .filter(file => getLabelsForFile(file).age !== null)
