@@ -1,4 +1,11 @@
-function getImageUri({ db, file }) {
+function getImageUri(data) {
+  if (window.withDataAugmentation) {
+    return `augment/${getActualImageUri(data)}`
+  }
+  return getActualImageUri(data)
+}
+
+function getActualImageUri({ db, file }) {
   if (db === 'utk') {
     return `utk-db/cropped-images/${file}`
   }
@@ -82,9 +89,6 @@ function getLabels(batchData) {
 let remainingBatches = []
 
 function createBatches(data, batchSize) {
-
-  // TODO fix imdb labels
-  data = data.filter(d => d.db !== 'imdb')
 
   const cat = []
   data.forEach(d => {

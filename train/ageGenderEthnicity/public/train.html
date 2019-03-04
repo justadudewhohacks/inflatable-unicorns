@@ -21,11 +21,11 @@
     //window.net = new faceapi.AgeGenderEthnicityNet(false, 512)
 
     // uri to weights file of last checkpoint
-    const modelCheckpoint = 'tmp/age-utk-wiki-appareal/age_gender_ethnicity_model_23.weights'
-    const startEpoch = 24
+    const modelCheckpoint = 'tmp/initial_glorot.weights'
+    const startEpoch = 0
     window.numBatchesPerEpoch = Infinity
 
-    const learningRate = 0.0005
+    const learningRate = 0.001
     window.optimizer = tf.train.adam(learningRate, 0.9, 0.999, 1e-8)
 
     window.saveEveryNthSample = Infinity
@@ -37,8 +37,9 @@
 
     window.iterDelay = 0
     window.withLogging = true
-    window.withRandomCrop = true
-    //window.withFaceAlignment = true
+    window.withRandomCrop = false
+    window.withFaceAlignment = false
+    window.withDataAugmentation = true
 
     async function load() {
       window.trainData = (await faceapi.fetchJson('tmp/trainData.json'))

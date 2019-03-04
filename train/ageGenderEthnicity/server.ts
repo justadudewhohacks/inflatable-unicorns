@@ -23,7 +23,12 @@ app.get('/augment/:db/*/:fileName', (req, res) => {
   const db = req.params['db']
   const fileName = req.params['fileName']
 
-  const landmarksFileName = db === 'utk-db' ? fileName.replace('chip_0.jpg', 'chip_0.json') : fileName.replace('.jpg', '.json')
+  const landmarksFileName = db === 'utk-db'
+    ? fileName.replace('chip_0.jpg', 'chip_0.json')
+    : (db === 'appareal-db'
+      ? fileName.replace('face_0.jpg', 'face_0.json')
+      : fileName.replace('.jpg', '.json')
+    )
 
   const imgPath = path.resolve(DATA_PATH, db, 'cropped-images', fileName)
   const landmarksJsonPath = path.resolve(DATA_PATH, db, 'landmarks', landmarksFileName)

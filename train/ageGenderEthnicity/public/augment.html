@@ -26,6 +26,7 @@
       <select id="databaseSelect" onchange="onDatabaseSelect()">
         <option value="utk" selected>utk</option>
         <option value="wiki">wiki</option>
+        <option value="appareal">appareal</option>
         <option value="imdb">imdb</option>
       </select>
       <label>Database</label>
@@ -64,6 +65,7 @@
       window.trainData = (await faceapi.fetchJson('tmp/trainData.json'))
       window.testData = await faceapi.fetchJson('tmp/testData.json')
       window.wikiLabels = (await faceapi.fetchJson('wiki-db/labels.json'))
+      window.apparealLabels = (await faceapi.fetchJson('appareal-db/labels.json'))
       window.imdbLabels = (await faceapi.fetchJson('imdb/labels.json'))
 
       const databaseSelect = $('#databaseSelect')
