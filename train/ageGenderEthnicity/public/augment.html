@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="tmp/face-api.js"></script>
+  <script src="commons.js"></script>
+  <script src="FileSaver.js"></script>
+  <script src="js/ageGenderEthnicityCommons.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.css">
+  <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/js/materialize.min.js"></script>
+</head>
+<body>
+  <div class="center-content page-container" style="margin-left: 20px; margin-top: 20px;">
+    <div style="display: flex;">
+      <div id="container"></div>
+      <div id="results" style="margin-left: 20px;">
+      </div>
+      <div id="meta" style="margin-left: 20px;">
+        <div id="database">-</div>
+        <div id="imgName">-</div>
+        <div id="gender">-</div>
+        <div id="age">-</div>
+      </div>
+    </div>
+    <div class="row input-field" style="margin-right: 20px;">
+      <select id="databaseSelect" onchange="onDatabaseSelect()">
+        <option value="utk" selected>utk</option>
+        <option value="wiki">wiki</option>
+        <option value="imdb">imdb</option>
+      </select>
+      <label>Database</label>
+    </div>
+    <div class="row input-field" style="margin-right: 20px;">
+      <select id="trainOrTestSelect" onchange="onTrainOrTestDataSelected()">
+        <option value="both" selected>Both</option>
+        <option value="trainData" selected>Train Data</option>
+        <option value="testData">Test Data</option>
+      </select>
+      <label>Train or Test Data</label>
+    </div>
+
+    <div style="display: flex; justify-content: center; align-items: center;">
+      <div>
+        <label for="imgByNr">Enter image NR: </label>
+        <input id="imgByNr" type="number" class="bold" value="0" step="1" autocomplete="off" onchange="onImageChanged()"/>
+      </div>
+      <div id="maxImgNr" style="margin-left: 50px;">-</div>
+    </div>
+    <div>
+      <label for="age-min">Age Min: </label>
+      <input id="age-min" type="number" class="bold" value="0" step="1" autocomplete="off" onchange="onAgeRangeChanged()"/>
+    </div>
+    <div>
+      <label for="age-max">Age Max: </label>
+      <input id="age-max" type="number" class="bold" value="100" step="1" autocomplete="off" onchange="onAgeRangeChanged()"/>
+    </div>
+  </div>
+
+  <script>
+
+    window.numAugmentations = 20
+
+    async function load() {
+      window.trainData = (await faceapi.fetchJson('tmp/trainData.json'))
+      window.testData = await faceapi.fetchJson('tmp/testData.json')
+      window.wikiLabels = (await faceapi.fetchJson('wiki-db/labels.json'))
+      window.imdbLabels = (await faceapi.fetchJson('imdb/labels.json'))
+
+      const databaseSelect = $('#databaseSelect')
+      const trainOrTestSelect = $('#trainOrTestSelect')
+      databaseSelect.material_select()
+      trainOrTestSelect.material_select()
+
+
+      onImageChanged()
+    }
+
+    load()
+
+    function onImageChanged() {
+      const meta = getSelectedImageMeta()
+      console.log(meta)
+      if (!meta.imgUri) return
+      onSelectionChanged(meta.imgUri)
+    }
+
+    function onDatabaseSelect(e) {
+      const database = $('#databaseSelect').val()
+      console.log('onDatabaseSelect', database)
+      updateResults()
+    }
+
+    function onTrainOrTestDataSelected() {
+      updateResults()
+    }
+
+
+    function onAgeRangeChanged() {
+      updateResults()
+    }
+
+    function getSelectedImageMeta() {
+      const imgNr = parseInt($('#imgByNr').get(0).value)
+      const database = $('#databaseSelect').val()
+      const trainOrTestData = $('#trainOrTestSelect').get(0).value
+
+      const minAge = $('#age-min').val()
+      const maxAge = $('#age-max').val()
+      const allData = (trainOrTestData === 'both'
+        ? window.testData.concat(window.trainData)
+        : (trainOrTestData === 'testData'
+          ? window.testData
+          : window.trainData
+          )
+        )
+        .filter(d => d.db === database)
+        .filter(d => {
+          const age = getLabels([d])[0].age[0]
+          return minAge <= age && age <= maxAge
+        })
+
+      const maxImgNr = allData.length
+      const data = allData[imgNr]
+      const labels = data ? getLabels([data])[0] : {}
+      const imgUri = data ? getImageUri(data) : null
+      return { imgNr, imgUri, maxImgNr, ...data, ...labels }
+    }
+
+
+    async function onSelectionChanged(imgUri) {
+      const imgs = await Promise.all(Array(window.numAugmentations).fill(0).map(() => faceapi.fetchImage(`augment/${imgUri}`)))
+      const container = $(`#container`).get(0)
+      $(container).empty()
+      imgs.forEach(img => container.appendChild(img))
+      updateResults()
+    }
+
+    async function updateResults() {
+      const { db, age, gender, ethnicity, imgUri, maxImgNr } = getSelectedImageMeta()
+      $(`#database`).get(0).innerHTML = db
+      $(`#imgName`).get(0).innerHTML = imgUri
+      $(`#maxImgNr`).get(0).innerHTML = maxImgNr
+      $(`#gender`).get(0).innerHTML = gender[0] === 1 ? 'female' : 'male'
+      $(`#age`).get(0).innerHTML = age
+    }
+
+  </script>
+</body>
+</html>
